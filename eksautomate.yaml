@@ -58,6 +58,7 @@ spec:
           #!/usr/bin/env sh
           set -eu
           # terraform init -backend-config="bucket=mybackend-tfstate" -backend-config="key=app7.state" -backend-config="region=us-east-1"
+          # terraform init -backend-config="bucket=tfstate-zak" -backend-config="key=eks.state" -backend-config="region=us-east-1"
 
       - name: eks-code-plan
         image:  docker.io/hashicorp/terraform:1.1.9
@@ -97,8 +98,8 @@ spec:
         script:  |
           #!/usr/bin/env sh
           set -eu
-
           # terraform apply --auto-approve -var cluster_name="cluster-za" -var cluster_version="1.23"
+          # terraform destroy --auto-approve -var cluster_name="cluster-za" -var cluster_version="1.23"
 
       - name: pullcode-aws-auth
         image: alpine/git #'gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.15.2'
@@ -141,7 +142,7 @@ spec:
           set -xe
           pwd
           ls -al
-          # terraform init -backend-config="bucket=mybackend-tfstate" -backend-config="key=authconfig.state" -backend-config="region=us-east-1"
+          # terraform init -backend-config="bucket=tfstate-zak" -backend-config="key=authconfig.state" -backend-config="region=us-east-1"
 
       - name: eks-auth-plan
         image:  docker.io/hashicorp/terraform:1.1.9
@@ -189,18 +190,27 @@ spec:
           ls
           # terraform apply --auto-approve
 
-    # - name: eks-auth-destroy
-    #   image:  docker.io/hashicorp/terraform:1.1.9
-    #   # image: zenika/terraform-aws-cli
-    #   workingDir:  $(workspaces.ekscluster.path)/aws-eks-authconfiguration
-    #   script:  |
-    #     #!/usr/bin/env sh
-    #     set -eu
-    #     set -xe
-    #     export "AWS_ACCESS_KEY_ID=key" #`cat $(workspaces.custom5.path)/aws_access_key_id`"
-    #     export "AWS_SECRET_ACCESS_KEY=secret" #`cat $(workspaces.custom5.path)/aws_secret_access_key`"
-    #     ls
-    #     # terraform destroy --auto-approve
+      # - name: eks-auth-destroy
+      #   image:  docker.io/hashicorp/terraform:1.1.9
+      #   # image: zenika/terraform-aws-cli
+      #   workingDir:  $(workspaces.ekscluster.path)/aws-eks-authconfiguration
+      #   env:
+      #       - name: AWS_ACCESS_KEY_ID
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_access_key_id
+      #       - name: AWS_SECRET_ACCESS_KEY
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_secret_access_key
+      #   script:  |
+      #     #!/usr/bin/env sh
+      #     set -eu
+      #     set -xe
+      #     ls
+      #     terraform destroy --auto-approve
 
       - name: pullcode-eks-ebs
         image: alpine/git #'gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.15.2'
@@ -223,48 +233,49 @@ spec:
           # git clone https://github.com/mohdzakir12/eks-ebs-csi-driver-automation.git     
       
       
-      - name: eks-eks-ebs-apply
-        image: ubuntu
-        workingDir: $(workspaces.ekscluster.path)/eks-ebs-csi-driver-automation
-        script: |
-          #!/usr/bin/env sh
-          set -eu
-          set -xe
-          ls
-          apt-get update
-          apt-get install wget -y 
-          apt-get install unzip -y
-          apt-get install sudo -y
-          apt-get install curl -y
-          wget https://releases.hashicorp.com/terraform/1.1.9/terraform_1.1.9_linux_amd64.zip
-          unzip terraform_1.1.9_linux_amd64.zip
-          sudo mv terraform /usr/local/bin/
-          curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.23.0/bin/linux/amd64/kubectl
-          chmod +x ./kubectl
-          sudo mv ./kubectl /usr/local/bin/kubectl
-          curl -LO https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
-          unzip awscli-exe-linux-x86_64.zip
-          sudo ./aws/install
+      # - name: eks-eks-ebs-apply
+      #   image: ubuntu
+      #   workingDir: $(workspaces.ekscluster.path)/eks-ebs-csi-driver-automation
+      #   script: |
+      #     #!/usr/bin/env sh
+      #     set -eu
+      #     set -xe
+      #     ls
+      #     apt-get update
+      #     apt-get install wget -y 
+      #     apt-get install unzip -y
+      #     apt-get install sudo -y
+      #     apt-get install curl -y
+      #     wget https://releases.hashicorp.com/terraform/1.1.9/terraform_1.1.9_linux_amd64.zip
+      #     unzip terraform_1.1.9_linux_amd64.zip
+      #     sudo mv terraform /usr/local/bin/
+      #     curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.23.0/bin/linux/amd64/kubectl
+      #     chmod +x ./kubectl
+      #     sudo mv ./kubectl /usr/local/bin/kubectl
+      #     curl -LO https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+      #     unzip awscli-exe-linux-x86_64.zip
+      #     sudo ./aws/install
 
-          kubectl version
-          aws eks update-kubeconfig --name cluster-za --region "us-east-1"
-          terraform version
-          # terraform init -backend-config="bucket=mybackend-tfstate" -backend-config="key=ebscsi.state" -backend-config="region=us-east-1"
-          # terraform plan
-          # terraform apply --auto-approve
-          kubectl get pods -A
+      #     kubectl version
+      #     aws eks update-kubeconfig --name cluster-za --region "us-east-1"
+      #     terraform version
+      #     cd $(workspaces.ekscluster.path)/eks-ebs-csi-driver-automation
+      #     terraform init -backend-config="bucket=tfstate-zak" -backend-config="key=ebscsi.state" -backend-config="region=us-east-1"
+      #     terraform plan
+      #     terraform apply --auto-approve
+      #     kubectl get pods -A
           
-        env:
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: aws-credentials
-              key: aws_access_key_id
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: aws-credentials
-              key: aws_secret_access_key
+      #   env:
+      #   - name: AWS_ACCESS_KEY_ID
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: aws-credentials
+      #         key: aws_access_key_id
+      #   - name: AWS_SECRET_ACCESS_KEY
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: aws-credentials
+      #         key: aws_secret_access_key
   
       
       - name: pullcode-eks-alb
@@ -316,7 +327,7 @@ spec:
           kubectl get pods -A
           ls
           terraform version
-          terraform init -backend-config="bucket=mybackend-tfstate" -backend-config="key=alb-addon.state" -backend-config="region=us-east-1"
+          terraform init -backend-config="bucket=tfstate-zak" -backend-config="key=alb-addon.state" -backend-config="region=us-east-1"
           terraform plan
           terraform apply --auto-approve
           # terraform destroy --auto-approve
@@ -333,17 +344,112 @@ spec:
               key: aws_secret_access_key
   
      
-    # - name: eks-code-destroy
-    #   image:  docker.io/hashicorp/terraform:light
-    #   workingDir:  $(workspaces.ekscluster.path)/provision-aws-eks
-    #   script:  |
-    #     #!/usr/bin/env sh
-    #     set -eu
-        
-    #     set -xe
-    #     export "AWS_ACCESS_KEY_ID=key" #`cat $(workspaces.custom5.path)/aws_access_key_id`"
-    #     export "AWS_SECRET_ACCESS_KEY=secret" #`cat $(workspaces.custom5.path)/aws_secret_access_key`"
+      # - name: eks-code-destroy
+      #   image:  docker.io/hashicorp/terraform:light
+      #   workingDir:  $(workspaces.ekscluster.path)/provision-aws-eks
+      #   env:
+      #       - name: AWS_ACCESS_KEY_ID
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_access_key_id
+      #       - name: AWS_SECRET_ACCESS_KEY
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_secret_access_key
+      #   script:  |
+      #     #!/usr/bin/env sh
+      #     set -eu
+      #     cd $(workspaces.ekscluster.path)/provision-aws-eks
+      #     terraform destroy --auto-approve -var cluster_name="cluster-za" -var cluster_version="1.23"
 
-    #     terraform destroy --auto-approve -var cluster_name="nextcluster" -var cluster_version="1.24"
+      # - name: eks-code-destroy
+      #   image: docker.io/hashicorp/terraform:light
+      #   workingDir: $(workspaces.ekscluster.path)/provision-aws-eks
+      #   env:
+      #     - name: AWS_ACCESS_KEY_ID
+      #       valueFrom:
+      #         secretKeyRef:
+      #           name: aws-credentials
+      #           key: aws_access_key_id
+      #     - name: AWS_SECRET_ACCESS_KEY
+      #       valueFrom:
+      #         secretKeyRef:
+      #           name: aws-credentials
+      #           key: aws_secret_access_key
+      #   script: |
+      #     #!/usr/bin/env sh
+      #     set -eu
+      #     cd $(workspaces.ekscluster.path)/provision-aws-eks
+      #     # terraform destroy --auto-approve -var cluster_name="cluster-za" -var cluster_version="1.23"
+      #     terraform destroy --auto-approve        
+
+
+    #  onother try for destroying eks cluster
+      # - name: eks-code-destroy
+      #   # image:  docker.io/hashicorp/terraform:1.1.9
+      #   image: zenika/terraform-aws-cli
+      #   workingDir:  $(workspaces.ekscluster.path)/provision-aws-eks
+      #   env:
+      #       - name: AWS_ACCESS_KEY_ID
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_access_key_id
+      #       - name: AWS_SECRET_ACCESS_KEY
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_secret_access_key
+      #   script:  |
+      #     #!/usr/bin/env sh
+      #     set -eu
+      #     terraform destroy --auto-approve -var cluster_name="cluster-za" -var cluster_version="1.23"
+
+
+
+      # - name: eks-eks-ebs-destroy
+      #   image: ubuntu
+      #   workingDir: $(workspaces.ekscluster.path)/eks-ebs-csi-driver-automation
+      #   env:
+      #       - name: AWS_ACCESS_KEY_ID
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_access_key_id
+      #       - name: AWS_SECRET_ACCESS_KEY
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_secret_access_key
+      #   script: |
+      #     #!/usr/bin/env sh
+      #     set -eu
+      #     set -xe
+      #     terraform destroy --auto-approve
+
+
+      # - name: eks-alb-destroy
+      #   image: ubuntu
+      #   workingDir:  $(workspaces.ekscluster.path)/eks-alb-controller-addon
+      #   env:
+      #       - name: AWS_ACCESS_KEY_ID
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_access_key_id
+      #       - name: AWS_SECRET_ACCESS_KEY
+      #         valueFrom:
+      #           secretKeyRef:
+      #             name: aws-credentials
+      #             key: aws_secret_access_key
+      #   script: |
+      #     #!/usr/bin/env sh
+      #     set -eu
+      #     set -xe
+      #     terraform destroy --auto-approve
+          
+
     workspaces:
     - name: ekscluster
